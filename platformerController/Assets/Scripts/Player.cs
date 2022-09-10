@@ -5,17 +5,19 @@ using UnityEngine;
 public class Player : MonoBehaviour
 {
     bool isDebug = true;
+    bool testBool = true;
 
-    [SerializeField] public float speed = 10f;
-    [SerializeField] public float jumpForce = 6f;
-    [SerializeField] public float jumpForceBoost = .5f;
-    [SerializeField] public float jumpForceBoostMod;
-    [SerializeField] public float jumpForceBoostCurve = .5f;
 
+    [SerializeField] public float speed = 20f;
+    [SerializeField] public float jumpForce = 80f;
+    [SerializeField] public float jumpVelocityCutOff = 14f;
+    [SerializeField] public float jumpMultiplyer = 16f;
+    [SerializeField] public float fallMultiplyer = 15f;
 
     public bool onGround;
     public bool onWall;
     public bool isJumping = false;
+    public bool isFalling = false;
 
     public int Ground;
     float collisionRadius = .25f;
@@ -35,7 +37,6 @@ public class Player : MonoBehaviour
     void Start()
     {
 
-        jumpForceBoostMod = jumpForceBoost;
         Ground = LayerMask.GetMask("ground");
 
         m_Rigidbody2D = GetComponent<Rigidbody2D>();
@@ -60,39 +61,37 @@ public class Player : MonoBehaviour
         transform.Translate(new Vector2(horizontalInput, 0) * Time.deltaTime * speed);
 
         //jumping
-     
 
-            if (Input.GetKeyUp(KeyCode.Space) & isJumping == true)
+        if (isJumping == false && onGround == true && Input.GetKeyDown(KeyCode.Space))
+        {
+            isJumping = true;
+            m_Rigidbody2D.AddForce(transform.up * jumpForce, ForceMode2D.Force);
+            m_Rigidbody2D.velocity = new Vector2(m_Rigidbody2D.velocity.x, 0);
+
+            m_Rigidbody2D.velocity += Vector2.up * jumpMultiplyer;
+
+            Debug.Log(m_Rigidbody2D.velocity);
+
+
+        }
+
+
+        // gravity
+
+        if (m_Rigidbody2D.velocity.y < jumpVelocityCutOff || m_Rigidbody2D.velocity.y > 0 && !Input.GetKey(KeyCode.Space))
+        {
+            isFalling = true;
+            m_Rigidbody2D.velocity += Vector2.up * Physics2D.gravity.y * fallMultiplyer * Time.deltaTime;
+        }
+        else
+        {
+            isFalling = false;
+        }
+
+        if (!Input.GetKeyUp(KeyCode.Space) && isJumping == true)
             {
                 isJumping = false;
-                jumpForceBoostMod = jumpForceBoost;
-            }
-
-            if (Input.GetKeyDown(KeyCode.Space) & isJumping == false & onGround == true)
-            {
-
-                m_Rigidbody2D.AddForce(transform.up * jumpForce, ForceMode2D.Impulse);
-                isJumping = true;
-
-            }
-
-            if (isJumping == true & m_Rigidbody2D.velocity.y > 0)
-            {
-                m_Rigidbody2D.AddForce(transform.up * jumpForceBoostMod, ForceMode2D.Impulse);
-
-            jumpForceBoostMod = jumpForceBoostCurve * jumpForceBoostMod;
-
-            }
-
-        
-
-
-
-
-
-
-
-
+            } 
 
     }
 
