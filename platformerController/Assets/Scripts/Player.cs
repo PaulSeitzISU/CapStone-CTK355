@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+
 public class Player : MonoBehaviour
 {
     bool isDebug = true;
@@ -18,6 +19,12 @@ public class Player : MonoBehaviour
     public bool onWall;
     public bool isJumping = false;
     public bool isFalling = false;
+    public RaycastHit2D hit;
+
+    public Vector3 rayCastOffSet = new Vector3(0f, 0f,0f);
+    public Vector3 playerRayCastOffSet = new Vector3(0f, 0f, 0f);
+    public float hitPointYOffSet = .5f;
+
 
     public int Ground;
     float collisionRadius = .25f;
@@ -47,18 +54,27 @@ public class Player : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        //ground fix 
+
+        if (transform.position.y + hitPointYOffSet < hit.point.y)
+        {
+   
+            transform.position = new Vector3(transform.position.x, hit.point.y + hitPointYOffSet, transform.position.z);
+            Debug.Log("warning Ground clip");
+
+        }
+
+        hit = Physics2D.Raycast(transform.position, -Vector2.up, Mathf.Infinity, Ground);
+
         //checks
         onGround = Physics2D.OverlapCircle((Vector2)transform.position + bottomOffset, collisionRadius, Ground);
-        onWall = Physics2D.OverlapCircle((Vector2)transform.position + leftOffset, collisionRadius, Ground)
-        || Physics2D.OverlapCircle((Vector2)transform.position + rightOffset, collisionRadius, Ground);
-
-
+        onWall = Physics2D.OverlapCircle((Vector2)transform.position + leftOffset, collisionRadius, Ground) || Physics2D.OverlapCircle((Vector2)transform.position + rightOffset, collisionRadius, Ground);
 
         //Movement
 
         horizontalInput = Input.GetAxis("Horizontal");
 
-        transform.Translate(new Vector2(horizontalInput, 0) * Time.deltaTime * speed);
+        transform.Translate(new Vector2(horizontalInput, 0f) * Time.deltaTime * speed);
 
         //jumping
 
@@ -66,14 +82,19 @@ public class Player : MonoBehaviour
         {
             isJumping = true;
             m_Rigidbody2D.AddForce(transform.up * jumpForce, ForceMode2D.Force);
-            m_Rigidbody2D.velocity = new Vector2(m_Rigidbody2D.velocity.x, 0);
+            m_Rigidbody2D.velocity = new Vector2(m_Rigidbody2D.velocity.x, 0f);
 
             m_Rigidbody2D.velocity += Vector2.up * jumpMultiplyer;
 
-            Debug.Log(m_Rigidbody2D.velocity);
-
-
         }
+
+
+
+
+    }
+
+    private void FixedUpdate()
+    {
 
 
         // gravity
@@ -89,12 +110,10 @@ public class Player : MonoBehaviour
         }
 
         if (!Input.GetKeyUp(KeyCode.Space) && isJumping == true)
-            {
-                isJumping = false;
-            } 
-
+        {
+            isJumping = false;
+        }
     }
-
     #region Dedugging
 
     private void OnDrawGizmos()    { if (isDebug == true) {
@@ -106,7 +125,7 @@ public class Player : MonoBehaviour
             Gizmos.DrawWireSphere((Vector2)transform.position + leftOffset, collisionRadius);
             Gizmos.DrawWireSphere((Vector2)transform.position + rightOffset, collisionRadius);
 
-
+            Debug.DrawRay(transform.position , -Vector2.up, Color.red);
 
 
         }
