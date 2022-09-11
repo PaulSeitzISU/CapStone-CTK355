@@ -10,20 +10,33 @@ public class Player : MonoBehaviour
 
 
     [SerializeField] public float speed = 20f;
+    [SerializeField] public float slowRatio = .9f;
+
     [SerializeField] public float jumpForce = 80f;
     [SerializeField] public float jumpVelocityCutOff = 14f;
     [SerializeField] public float jumpMultiplyer = 16f;
     [SerializeField] public float fallMultiplyer = 15f;
 
+    [SerializeField] public float coyoteTime = .1f;
+    [SerializeField] public float coyoteTimeCounter;
+
+    [SerializeField] public float jumpBufferTime = .1f;
+    [SerializeField] public float jumpBufferTimeCounter;
+
+
     public bool onGround;
-    public bool onWall;
+    public bool onWallLeft;
+    public bool onWallRight;
     public bool isJumping = false;
     public bool isFalling = false;
-    public RaycastHit2D hit;
+    public RaycastHit2D rayUp;
+    public float rayUpYOffSet = -.5f;
+    public RaycastHit2D rayDown;
+    public bool isGroundfixing;
+
 
     public Vector3 rayCastOffSet = new Vector3(0f, 0f,0f);
     public Vector3 playerRayCastOffSet = new Vector3(0f, 0f, 0f);
-    public float hitPointYOffSet = .5f;
 
 
     public int Ground;
@@ -43,7 +56,6 @@ public class Player : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-
         Ground = LayerMask.GetMask("ground");
 
         m_Rigidbody2D = GetComponent<Rigidbody2D>();
@@ -54,32 +66,96 @@ public class Player : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        //ground fix 
-
-        if (transform.position.y + hitPointYOffSet < hit.point.y)
-        {
-   
-            transform.position = new Vector3(transform.position.x, hit.point.y + hitPointYOffSet, transform.position.z);
-            Debug.Log("warning Ground clip");
-
-        }
-
-        hit = Physics2D.Raycast(transform.position, -Vector2.up, Mathf.Infinity, Ground);
 
         //checks
         onGround = Physics2D.OverlapCircle((Vector2)transform.position + bottomOffset, collisionRadius, Ground);
-        onWall = Physics2D.OverlapCircle((Vector2)transform.position + leftOffset, collisionRadius, Ground) || Physics2D.OverlapCircle((Vector2)transform.position + rightOffset, collisionRadius, Ground);
+        onWallLeft = Physics2D.OverlapCircle((Vector2)transform.position + leftOffset, collisionRadius, Ground);
+        onWallRight = Physics2D.OverlapCircle((Vector2)transform.position + rightOffset, collisionRadius, Ground);
+
+        //Clip Fixes
+        //fix Down
+
+      
+        if (transform.position.y - rayUpYOffSet < rayDown.point.y)
+        {
+
+            transform.position = new Vector3(transform.position.x, rayDown.point.y - rayUpYOffSet, transform.position.z);
+            isGroundfixing = true;
+            Debug.Log("warning Ground clip");
+
+        }
+        else
+        {
+            isGroundfixing = false;
+        }
+
+        rayDown = Physics2D.Raycast(transform.position, -Vector2.up, Mathf.Infinity, Ground);
+
+
+        //fix up
+
+
+        if (transform.position.y + rayUpYOffSet > rayUp.point.y && isGroundfixing == false && onGround == false)
+        {
+            transform.position = new Vector3(transform.position.x, rayUp.point.y + rayUpYOffSet, transform.position.z);
+            Debug.Log("warning Roof clip");
+             
+        }
+
+        rayUp = Physics2D.Raycast(transform.position, Vector2.up, Mathf.Infinity, Ground);
+
+
+
 
         //Movement
 
         horizontalInput = Input.GetAxis("Horizontal");
 
-        transform.Translate(new Vector2(horizontalInput, 0f) * Time.deltaTime * speed);
-
-        //jumping
-
-        if (isJumping == false && onGround == true && Input.GetKeyDown(KeyCode.Space))
+        if (horizontalInput < 0)
         {
+            if (onWallLeft == false)
+            {
+                transform.Translate(new Vector2(horizontalInput, 0f) * Time.deltaTime * speed);
+            }
+
+        }
+        else
+        {
+            if (onWallRight == false)
+            {
+                transform.Translate(new Vector2(horizontalInput, 0f) * Time.deltaTime * speed);
+            }
+        }
+        if (horizontalInput == 0)
+        {
+            m_Rigidbody2D.velocity = new Vector2(m_Rigidbody2D.velocity.x * slowRatio, m_Rigidbody2D.velocity.y);
+        }
+
+        //jump timing
+
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            jumpBufferTimeCounter = jumpBufferTime;
+        }
+        else
+        {
+            jumpBufferTimeCounter -= Time.deltaTime;
+        }
+
+
+        if (onGround == true)
+        {
+            coyoteTimeCounter = coyoteTime;
+        }
+        else
+        {
+            coyoteTimeCounter -= Time.deltaTime;
+        }
+
+
+        if (coyoteTimeCounter > 0 && isJumping == false && jumpBufferTimeCounter > 0)
+        {
+            jumpBufferTimeCounter = 0;
             isJumping = true;
             m_Rigidbody2D.AddForce(transform.up * jumpForce, ForceMode2D.Force);
             m_Rigidbody2D.velocity = new Vector2(m_Rigidbody2D.velocity.x, 0f);
