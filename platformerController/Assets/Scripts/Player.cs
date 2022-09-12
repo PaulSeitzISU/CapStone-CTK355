@@ -5,24 +5,24 @@ using UnityEngine;
 
 public class Player : MonoBehaviour
 {
+    #region Var
+
     bool isDebug = true;
     bool testBool = true;
 
 
     [SerializeField] public float speed = 20f;
-    [SerializeField] public float slowRatio = .9f;
+    [SerializeField] public float slowRatio = .8f;
 
-    [SerializeField] public float jumpForce = 80f;
     [SerializeField] public float jumpVelocityCutOff = 14f;
     [SerializeField] public float jumpMultiplyer = 16f;
     [SerializeField] public float fallMultiplyer = 15f;
 
-    [SerializeField] public float coyoteTime = .1f;
+    [SerializeField] public float coyoteTime = .02f;
     [SerializeField] public float coyoteTimeCounter;
 
     [SerializeField] public float jumpBufferTime = .1f;
     [SerializeField] public float jumpBufferTimeCounter;
-
 
     public bool onGround;
     public bool onWallLeft;
@@ -34,10 +34,8 @@ public class Player : MonoBehaviour
     public RaycastHit2D rayDown;
     public bool isGroundfixing;
 
-
     public Vector3 rayCastOffSet = new Vector3(0f, 0f,0f);
     public Vector3 playerRayCastOffSet = new Vector3(0f, 0f, 0f);
-
 
     public int Ground;
     float collisionRadius = .25f;
@@ -46,12 +44,11 @@ public class Player : MonoBehaviour
     Vector2 leftOffset = new Vector2(-.5f, 0f);
     Vector2 rightOffset = new Vector2(.5f, 0f);
 
-
-
-
     public float horizontalInput;
 
     private Rigidbody2D m_Rigidbody2D;
+
+    #endregion
 
     // Start is called before the first frame update
     void Start()
@@ -59,8 +56,6 @@ public class Player : MonoBehaviour
         Ground = LayerMask.GetMask("ground");
 
         m_Rigidbody2D = GetComponent<Rigidbody2D>();
-
-
     }
 
     // Update is called once per frame
@@ -72,17 +67,21 @@ public class Player : MonoBehaviour
         onWallLeft = Physics2D.OverlapCircle((Vector2)transform.position + leftOffset, collisionRadius, Ground);
         onWallRight = Physics2D.OverlapCircle((Vector2)transform.position + rightOffset, collisionRadius, Ground);
 
+        ClipFix();
+        Movement();
+        Jump();
+    }
+
+    public void ClipFix()
+    {
+
         //Clip Fixes
         //fix Down
-
-      
         if (transform.position.y - rayUpYOffSet < rayDown.point.y)
         {
-
             transform.position = new Vector3(transform.position.x, rayDown.point.y - rayUpYOffSet, transform.position.z);
             isGroundfixing = true;
             Debug.Log("warning Ground clip");
-
         }
         else
         {
@@ -91,24 +90,20 @@ public class Player : MonoBehaviour
 
         rayDown = Physics2D.Raycast(transform.position, -Vector2.up, Mathf.Infinity, Ground);
 
-
         //fix up
-
 
         if (transform.position.y + rayUpYOffSet > rayUp.point.y && isGroundfixing == false && onGround == false)
         {
             transform.position = new Vector3(transform.position.x, rayUp.point.y + rayUpYOffSet, transform.position.z);
             Debug.Log("warning Roof clip");
-             
         }
 
         rayUp = Physics2D.Raycast(transform.position, Vector2.up, Mathf.Infinity, Ground);
 
+    }
 
-
-
-        //Movement
-
+    public void Movement()
+    {
         horizontalInput = Input.GetAxis("Horizontal");
 
         if (horizontalInput < 0)
@@ -117,21 +112,21 @@ public class Player : MonoBehaviour
             {
                 transform.Translate(new Vector2(horizontalInput, 0f) * Time.deltaTime * speed);
             }
-
         }
-        else
+        else if (onWallRight == false)
         {
-            if (onWallRight == false)
             {
                 transform.Translate(new Vector2(horizontalInput, 0f) * Time.deltaTime * speed);
             }
         }
-        if (horizontalInput == 0)
+        else if (horizontalInput == 0)
         {
-            m_Rigidbody2D.velocity = new Vector2(m_Rigidbody2D.velocity.x * slowRatio, m_Rigidbody2D.velocity.y);
+            m_Rigidbody2D.velocity = new Vector2(m_Rigidbody2D.velocity.x * slowRatio, m_Rigidbody2D.velocity.y * Time.deltaTime);
         }
+    }
 
-        //jump timing
+    public void Jump()
+    {
 
         if (Input.GetKeyDown(KeyCode.Space))
         {
@@ -142,7 +137,6 @@ public class Player : MonoBehaviour
             jumpBufferTimeCounter -= Time.deltaTime;
         }
 
-
         if (onGround == true)
         {
             coyoteTimeCounter = coyoteTime;
@@ -152,20 +146,29 @@ public class Player : MonoBehaviour
             coyoteTimeCounter -= Time.deltaTime;
         }
 
-
         if (coyoteTimeCounter > 0 && isJumping == false && jumpBufferTimeCounter > 0)
         {
-            jumpBufferTimeCounter = 0;
+
             isJumping = true;
-            m_Rigidbody2D.AddForce(transform.up * jumpForce, ForceMode2D.Force);
             m_Rigidbody2D.velocity = new Vector2(m_Rigidbody2D.velocity.x, 0f);
 
             m_Rigidbody2D.velocity += Vector2.up * jumpMultiplyer;
-
+        }
+        else
+        {
+            if (m_Rigidbody2D.velocity.y <= 0 && onGround)
+            {
+                isJumping = false;
+            }
         }
 
+        if (Input.GetKeyUp(KeyCode.Space) && m_Rigidbody2D.velocity.y > 0f)
+        {
+            m_Rigidbody2D.velocity = new Vector2(m_Rigidbody2D.velocity.x, m_Rigidbody2D.velocity.y * .5f);
 
-
+            jumpBufferTimeCounter = 0;
+            coyoteTimeCounter = 0;
+        }
 
     }
 
@@ -185,11 +188,8 @@ public class Player : MonoBehaviour
             isFalling = false;
         }
 
-        if (!Input.GetKeyUp(KeyCode.Space) && isJumping == true)
-        {
-            isJumping = false;
-        }
     }
+
     #region Dedugging
 
     private void OnDrawGizmos()    { if (isDebug == true) {
